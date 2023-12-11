@@ -15,4 +15,9 @@ export interface iError {
     verify: boolean;
     verifyToken: string;
     status: string;
+    allPasswords: Array<{}>;
+  }
+
+  export interface iPassword {
+    password: string;
   }

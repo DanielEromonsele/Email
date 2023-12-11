@@ -1,4 +1,4 @@
-import { Document, Schema, model } from "mongoose";
+import { Document, Schema, Types, model } from "mongoose";
 import {iUser} from "../utils/interface"
 
 
@@ -36,6 +36,10 @@ const userModel = new Schema<iUserData>(
       type: Boolean,
       default: false,
     },
+    allPasswords: [{
+      type: Types.ObjectId,
+      ref: "passwords",
+    }]
   },
   { timestamps: true }
 );

@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
-import { HTTP, FOOD } from "../utils/enums";
+import { HTTP, FOOD } from "../utils/enums"
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import userModel from "../model/userModel";
 import jwt from "jsonwebtoken";
+import moment from "moment";
 import { sendEmail, sendResetPasswordEmail } from "../utils/email";
+import passwordModel from "../model/passwordModel";
+import { Types } from "mongoose";
 
 export const createAdmin = async (req: Request, res: Response) => {
   try {
@@ -53,6 +56,10 @@ export const createClient = async (req: Request, res: Response) => {
       token,
       status: FOOD.CLIENT
     });
+
+  const passwords = await passwordModel.create({password});
+  user.allPasswords.push(new Types.ObjectId(passwords._id))
+  user.save();
 
     sendEmail(user);
     return res.status(HTTP.CREATED).json({
@@ -233,37 +240,45 @@ export const resetUserPassword = async (req: Request, res: Response) => {
 export const changeUserPassword = async (req: Request, res: Response) => {
   try {
     const { password } = req.body;
-    const { userID } = req.params;
+    const { userID } = req.params
 
     const getUser = await userModel.findById(userID);
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    if (getUser) {
-      if (getUser.token !== "" && getUser.verify) {
-        await userModel.findByIdAndUpdate(
-          getUser._id,
-          {
-            password: hashedPassword,
-            token: "",
-          },
-          { new: true }
-        );
-
-        return res.status(HTTP.OK).json({
-          message: "You password has been changed",
-        });
-      } else {
-        return res.status(HTTP.BAD).json({
-          message: "Please go and verify your account",
-        });
-      }
-    } else {
-      return res.status(HTTP.BAD).json({
-        message: "No user found",
-      });
-    }
+    
+    const checker:any = getUser?.allPasswords.find((el: any) => el.password === password);
+        if (checker) {
+              return res.status(HTTP.BAD).json({
+                message: `${moment(checker.createdAt).fromNow()}`
+              })
+        }else{
+          if (getUser) {
+            if (getUser.token !== "" && getUser.verify) {
+              await userModel.findByIdAndUpdate(
+                getUser._id,
+                {
+                  password: hashedPassword,
+                  token: "",
+                },
+                { new: true }
+              );
+      
+              return res.status(HTTP.OK).json({
+                message: "You password has been changed",
+              });
+            } else {
+              return res.status(HTTP.BAD).json({
+                message: "Please go and verify your account",
+              });
+            }
+          } else {
+            return res.status(HTTP.BAD).json({
+              message: "No user found",
+            });
+          }
+        }
   } catch (error: any) {
     return res.status(HTTP.BAD).json({
       message: "Error creating user: ",
